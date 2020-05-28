@@ -16,7 +16,6 @@ import time as t
 Global Scope: Variables and Report Strings.
 """
 cs_catalog_pages_url = "https://www.bu.edu/academics/cas/courses/computer-science/"
-
 #stem that will be used for the other pages after getting the general course data.
 academics_url_stem = "https://www.bu.edu"
 
@@ -79,10 +78,6 @@ def print_general_and_schedule_data(input_url, stem_url, low_bound, high_bound):
 
                 print("")
                 print("---------------------------------------------------------")
-
-
-def collate_general_and_schedule(input_url, stem_url):
-    print( get_professor_and_schedule_data(stem_url, get_general_course_data(input_url)))
 
 
 def get_professor_and_schedule_data(input_url, course_objects):
@@ -154,5 +149,4 @@ def get_general_course_data(input_url):
 Calling Functions
 """
 #print_general_course_data(cs_catalog_pages_url, 1, 3)
-#collate_general_and_schedule(cs_catalog_pages_url, academics_url_stem)
-print_general_and_schedule_data(cs_catalog_pages_url, academics_url_stem, 1, 1)
+print_general_and_schedule_data(cs_catalog_pages_url, academics_url_stem, 1, 3)
