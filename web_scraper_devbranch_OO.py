@@ -9,6 +9,7 @@ Written by James Kunstle -- Starting: 5/28/2020 --
 from bs4 import BeautifulSoup
 import requests
 import time as t
+from typing import List
 
 """
 Global Scope: Variables and Report Strings.
@@ -25,14 +26,14 @@ class WebCrawler_CS_CL(object):
         """
         Variables used for requests library and reporting statuses.
         """
-        RESPONSE_OKAY_TOKEN = 200       #expected response from server if request accepted
-        RESPONSE_NOTFOUND_TOKEN = 404   #expected response from server if page not found
-        SLEEP_TIME = 0.5                #500ms sleep between all requests to avoid raising DDOS flags
+        self.RESPONSE_OKAY_TOKEN = 200       #expected response from server if request accepted
+        self.RESPONSE_NOTFOUND_TOKEN = 404   #expected response from server if page not found
+        self.SLEEP_TIME = 0.5                #500ms sleep between all requests to avoid raising DDOS flags
 
-        SLEEP_MESSAGE = "Sleeping for " +  str(SLEEP_TIME) + " seconds to avoid DDOS flags."
-        COMPLETE_MESSAGE = "Done with course."
-        NOTFOUND_MESSAGE = "Status: Not Found"
-        FAILED_MESSAGE = "Status: Failed, unspecified code"
+        self.SLEEP_MESSAGE = "Sleeping for " +  str(self.SLEEP_TIME) + " seconds to avoid DDOS flags."
+        self.COMPLETE_MESSAGE = "Done with course."
+        self.NOTFOUND_MESSAGE = "Status: Not Found"
+        self.FAILED_MESSAGE = "Status: Failed, unspecified code"
 
         """
         Object Variables
@@ -48,18 +49,16 @@ class WebCrawler_CS_CL(object):
         self.courses: List = []
         return None
 
-    def crawl_parent_pages(self, start_URL: str = None)->List:
+    def crawl_parent_pages(self, start_URL: str)->List:
         #get general data from the URL that is given
-        if start_URL not None:
-            URL = self.parent_page
-        else:
-            URL = start_URL
+
+        URL = start_URL
 
         req = requests.get(URL)
         course_objects = []
 
         #perform necessary error checking
-        if(req.status_code == RESPONSE_OKAY_TOKEN):
+        if(req.status_code == self.RESPONSE_OKAY_TOKEN):
             #parse the HTML from the URL into a soup object.
             soup = BeautifulSoup(req.content, "html.parser")
             #based on the structure of the HTML, we need this object.
@@ -74,30 +73,26 @@ class WebCrawler_CS_CL(object):
                         course_objects.append([name.text, link.attrs["href"], prereq.text])
                     else:
                         course_objects.append([name.text, link.attrs["href"], "No Prerequisites"])
-            print(COMPLETE_MESSAGE)
-        elif(req.status_code == RESPONSE_NOTFOUND_TOKEN):
-            print(NOTFOUND_MESSAGE)
+            print(self.COMPLETE_MESSAGE)
+        elif(req.status_code == self.RESPONSE_NOTFOUND_TOKEN):
+            print(self.NOTFOUND_MESSAGE)
         else:
-            print(FAILED_MESSAGE)
+            print(self.FAILED_MESSAGE)
 
 
         return course_objects
 
-    def crawl_child_pages(self, start_URL:str = None, course_data: List = None)->List:
-        if start_URL not None:
-            URL: str = self.child_page
-        else:
-            URL: str = start_URL
-
+    def crawl_child_pages(self, start_URL:str, course_data: List)->List:
+        URL: str = start_URL #this was used for debugging but is useless now
         schedule_objects = []
-        for course in self.parent_pages_data:
-            t.sleep(SLEEP_TIME)
+        for course in course_data:
+            t.sleep(self.SLEEP_TIME)
             #use the URL for each individual course to access the page.
             req = requests.get(URL + course[1])
 
             course_schedule = []
 
-            if(req.status_code == RESPONSE_OKAY_TOKEN):
+            if(req.status_code == self.RESPONSE_OKAY_TOKEN):
                 #parse the HTML from the URL into a soup object.
                 soup = BeautifulSoup(req.content, "html.parser")
                 #based on the structure, we need this object.
@@ -112,13 +107,13 @@ class WebCrawler_CS_CL(object):
                     course_schedule.append([sem.text, det.text])
 
                 schedule_objects.append(course_schedule)
-                print(COMPLETE_MESSAGE)
-            elif(req.status_code == RESPONSE_NOTFOUND_TOKEN):
-                print(NOTFOUND_MESSAGE)
+                print(self.COMPLETE_MESSAGE)
+            elif(req.status_code == self.RESPONSE_NOTFOUND_TOKEN):
+                print(self.NOTFOUND_MESSAGE)
             else:
-                print(FAILED_MESSAGE)
+                print(self.FAILED_MESSAGE)
 
-        return = schedule_objects
+        return schedule_objects
 
     def crawl_all(self)->None:
         parent_pages = []
@@ -132,7 +127,7 @@ class WebCrawler_CS_CL(object):
             child_pages.append(self.crawl_child_pages(start_URL = self.child_page,
                                                     course_data = general_course_data)) #add schedule to pages list
             print("Finshed page: "+ str(i))
-            t.sleep(SLEEP_TIME)
+            t.sleep(self.SLEEP_TIME)
 
         self.parent_pages = parent_pages
         self.child_pages = child_pages
@@ -156,19 +151,27 @@ class WebCrawler_CS_CL(object):
                     for info_section in info[1:]:
                         details_object.append(info_section)
 
-                    course_object.append([details_object])
+                    course_object.append(details_object)
 
                 self.courses.append(course_object)
         return None
 
     def print(self)->None:
         for course in self.courses:
-            print(course[0])
+                print("")
+                print("---------------------------------------------------------------")
+                print("Course Title:            " + str(course[0]))
+                print("Link:                    " + str(course[1]))
+                print("Prereqs:                 " + str(course[2]))
+                print("Schedule info:\n")
+
+                possible_categories = ["Semester", "Section", "Instructor", "Location", "Schedule", "Notes"]
+                for times in course[3:]:
+                    print("\n")
+                    for entry in zip(times, possible_categories):
+                        print("\t" + entry[1] + ": " + entry[0])
+
         return None
-
-
-
-
 
 
 """
@@ -176,6 +179,10 @@ Main
 """
 
 def main() -> None:
+    scraper = WebCrawler_CS_CL(catalog_URL, stem_URL, 1, 1)
+    scraper.crawl_all()
+    scraper.parse_and_join()
+    scraper.print()
 
 
 if __name__ == "__main__":
