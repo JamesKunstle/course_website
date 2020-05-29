@@ -39,46 +39,130 @@ class WebCrawler_CS_CL(object):
         """
         Object Variables
         """
-        self.parent_page = pages_URL
-        self.child_page = stem_URL
+        self.parent_page: str = pages_URL
+        self.child_page: str = stem_URL
 
-        self.parent_pages_data = []
-        self.child_pages_data = []
-        self.collated_data = []
+        self.pages_start: int = pages_start
+        self.pages_end: int = pages_end
+
+        self.parent_pages: List = []
+        self.child_pages: List = []
+        self.courses: List = []
         return None
-    def crawl_parent_pages(self)->None:
-            #get general data from the URL that is given
-            req = requests.get(input_url)
-            course_objects = []
 
-            #perform necessary error checking
+    def crawl_parent_pages(self, start_URL: str = None)->List:
+        #get general data from the URL that is given
+        if start_URL not None:
+            URL = self.parent_page
+        else:
+            URL = start_URL
+
+        req = requests.get(URL)
+        course_objects = []
+
+        #perform necessary error checking
+        if(req.status_code == RESPONSE_OKAY_TOKEN):
+            #parse the HTML from the URL into a soup object.
+            soup = BeautifulSoup(req.content, "html.parser")
+            #based on the structure of the HTML, we need this object.
+            course_feed = soup.find("ul", {"class": "course-feed"})
+            feed_entries = course_feed.find_all("li")
+            for entry in feed_entries:
+                link = entry.find("a")
+                name = entry.find("strong")
+                prereq = entry.find("span")
+                if name is not None and link is not None:
+                    if prereq is not None:
+                        course_objects.append([name.text, link.attrs["href"], prereq.text])
+                    else:
+                        course_objects.append([name.text, link.attrs["href"], "No Prerequisites"])
+            print(COMPLETE_MESSAGE)
+        elif(req.status_code == RESPONSE_NOTFOUND_TOKEN):
+            print(NOTFOUND_MESSAGE)
+        else:
+            print(FAILED_MESSAGE)
+
+
+        return course_objects
+
+    def crawl_child_pages(self, start_URL:str = None, course_data: List = None)->List:
+        if start_URL not None:
+            URL: str = self.child_page
+        else:
+            URL: str = start_URL
+
+        schedule_objects = []
+        for course in self.parent_pages_data:
+            t.sleep(SLEEP_TIME)
+            #use the URL for each individual course to access the page.
+            req = requests.get(URL + course[1])
+
+            course_schedule = []
+
             if(req.status_code == RESPONSE_OKAY_TOKEN):
                 #parse the HTML from the URL into a soup object.
                 soup = BeautifulSoup(req.content, "html.parser")
                 #based on the structure, we need this object.
-                course_feed = soup.find("ul", {"class": "course-feed"})
-                feed_entries = course_feed.find_all("li")
-                for entry in feed_entries:
-                    link = entry.find("a")
-                    name = entry.find("strong")
-                    prereq = entry.find("span")
-                    if name is not None and link is not None:
-                        if prereq is not None:
-                            course_objects.append([name.text, link.attrs["href"], prereq.text])
-                        else:
-                            course_objects.append([name.text, link.attrs["href"], "No Prerequisites"])
+                whole_schedule = soup.find("div", {"class":"cf-course"})
+
+                semesters = whole_schedule.find_all("h4")
+                course_details = whole_schedule.find_all("table")
+
+                for semester, detail in zip(semesters, course_details):
+                    sem = semester.find("strong")
+                    det = detail.find_all("tr")[1]
+                    course_schedule.append([sem.text, det.text])
+
+                schedule_objects.append(course_schedule)
                 print(COMPLETE_MESSAGE)
-    elif(req.status_code == RESPONSE_NOTFOUND_TOKEN):
-        print(NOTFOUND_MESSAGE)
-    else:
-        print(FAILED_MESSAGE)
+            elif(req.status_code == RESPONSE_NOTFOUND_TOKEN):
+                print(NOTFOUND_MESSAGE)
+            else:
+                print(FAILED_MESSAGE)
+
+        return = schedule_objects
+
+    def crawl_all(self)->None:
+        parent_pages = []
+        child_pages = []
+
+        for i in range(self.pages_start, self.pages_end + 1):
+            local_url = self.parent_page + str(i) #get url of website page
+            general_course_data = self.crawl_parent_pages(start_URL=local_url) #get the names of the courses, url-end, and prereqs
+
+            parent_pages.append(general_course_data) #add ^^ to the pages list
+            child_pages.append(self.crawl_child_pages(start_URL = self.child_page,
+                                                    course_data = general_course_data)) #add schedule to pages list
+            print("Finshed page: "+ str(i))
+            t.sleep(SLEEP_TIME)
+
+        self.parent_pages = parent_pages
+        self.child_pages = child_pages
 
         return None
-    def crawl_child_pages(self)->None:
+
+    def parse_and_join(self)->None:
+        #for each page of parents and page of children:
+        for parent_page, child_page in zip(self.parent_pages, self.child_pages):
+            #for each course in a parent page and its details:
+            for course, course_details in zip(parent_page, child_page):
+                #preliminary object containing (Title, Link, Prereq string)
+                course_object = [course[0], course[1], course[2]]
+
+                #these are all of the class sections. need to be parsed and each is added individually
+                for entry in course_details:
+                    #initialize with semester details
+                    details_object = [entry[0]]
+
+                    info = str(entry[1]).split('\n')
+                    possible_categories = ["Section", "Instructor", "Location", "Schedule", "Notes"]
+                    for info_section in info[1:]:
+                        details_object.append(info_section)
+
+                    course_object.append(details_object)
         return None
-    def collate_data(self)->None:
-        return None
-    def print_formatted_data(self)->None:
+
+    def print(self)->None:
         return None
 
 
