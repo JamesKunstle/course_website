@@ -20,10 +20,8 @@ Crawler class
 """
 
 class WebCrawler_CS_CL(object):
-    def __init__(self, pages_URL: str,
-                       stem_URL: str,
-                       pages_start: int,
-                       pages_end: int)->None:
+
+    def __init__(self, pages_URL: str, stem_URL: str, pages_start: int, pages_end: int)->None:
         """
         Variables used for requests library and reporting statuses.
         """
@@ -155,14 +153,17 @@ class WebCrawler_CS_CL(object):
                     details_object = [entry[0]]
 
                     info = str(entry[1]).split('\n')
-                    possible_categories = ["Section", "Instructor", "Location", "Schedule", "Notes"]
                     for info_section in info[1:]:
                         details_object.append(info_section)
 
-                    course_object.append(details_object)
+                    course_object.append([details_object])
+
+                self.courses.append(course_object)
         return None
 
     def print(self)->None:
+        for course in self.courses:
+            print(course[0])
         return None
 
 
